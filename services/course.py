@@ -1,70 +1,59 @@
-from typing import List, Optional
+from fastapi import HTTPException
+from typing import List
 
-from models.course import Course, Review
-from data.mock import courses as mock_courses, reviews as mock_reviews
+from schemas.course import CourseSchema
+from models.course import CourseModel
+from config.db import Session
+# from data.mock import courses as mock_courses, reviews as mock_reviews
 
-class CourseService:
-  def __init__(self, courses = []):
-    self.courses = courses
+class CoursesService:
+  def __init__(self):
+    self.db = Session()
+  
+  def get_courses(self) -> List[CourseModel]:
+    courses = self.db.query(CourseModel).all()
+    return courses
 
-  def get_courses(self) -> List[Course]:
-    return self.courses
-
-  def get_course(self, course_id: int) -> Optional[Course]:
-    for course in self.courses:
-      if course.id == course_id:
-        return course
-    return None
-
-  def add_course(self, course) -> Course:
-    self.courses.append(course)
+  def get_course(self, id: int) -> CourseModel:
+    course = self.db.query(CourseModel).filter(CourseModel.id == id).first()
+    return course
+  
+  def add_course(self, course: CourseSchema) -> CourseModel:
+    new_course = CourseModel(**course.model_dump())
+    print(course)
+    print(new_course)
+    print(new_course.__dict__)
+    self.db.add(new_course)
+    self.db.commit()
+    self.db.refresh(new_course)
+    return new_course
+  
+  def partial_update_course(self, id: int, updated_course: dict) -> CourseModel:
+    course = self.get_course(id)
+    if not course:
+      return None
+    course_keys = course.__dict__.keys()
+    for key, value in updated_course.items():
+      if key == "id":
+        continue
+      if not key in course_keys:
+        print(f"Key {key} not found in course keys")
+        raise HTTPException(status_code=400, detail=f"Key {key} not found in course keys")
+      setattr(course, key, value)
+    print(course.__dict__)
+    self.db.commit()
+    self.db.refresh(course)
+    return course
+  
+  def update_course(self, id: int, updated_course: CourseSchema) -> CourseModel:
+    course = self.get_course(id)
+    if not course:
+      return None
+    for key, value in updated_course.__dict__.items():
+      if not key == "id":
+        setattr(course, key, value)
+    self.db.commit()
+    self.db.refresh(course)
     return course
 
-  def update_course(self, course_id: int, course) -> Optional[Course]:
-    for index, course in enumerate(self.courses):
-      if course.id == course_id:
-        self.courses.pop(index)
-        self.courses.append(course)
-        return course
-    return None
-
-  def delete_course(self, course_id: int) -> bool:
-    for index, course in enumerate(self.courses):
-      if course.id == course_id:
-        self.courses.pop(index)
-        return True
-    return False
-  
-  def get_reviews_by_course_id(self, course_id: int) -> Optional[List[Review]]:
-    course = self.get_course(course_id)
-    if course is None:
-      return None
-    course_reviews = []
-    for course_review_id in course.review_ids:
-      for review in mock_reviews:
-        if review.id == course_review_id:
-          course_reviews.append(review)
-    return course_reviews
-  
-  def create_review(self, course_id: int, new_review: Review) -> Optional[Review]:
-    course = self.get_course(course_id)
-    if course is None:
-      return None
-    mock_reviews.append(new_review)
-    course.review_ids.append(new_review.id)
-    return new_review
-  
-  def delete_review(self, course_id: int, review_id: int) -> bool:
-    course = self.get_course(course_id)
-    if course is None:
-      return False
-    for index, course_review_id in enumerate(course.review_ids):
-      if course_review_id == review_id:
-        course.review_ids.pop(index)
-        for index, review in enumerate(mock_reviews):
-          if review.id == review_id:
-            mock_reviews.pop(index)
-            return True
-    return False
-
-mock_courses_service = CourseService(courses=mock_courses)
+courses_service = CoursesService()
