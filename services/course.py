@@ -1,10 +1,9 @@
 from fastapi import HTTPException
 from typing import List
 
-from schemas.course import CourseSchema
-from models.course import CourseModel
+from schemas.course import CourseSchema, ReviewSchema
+from models.course import CourseModel, ReviewModel
 from config.db import Session
-# from data.mock import courses as mock_courses, reviews as mock_reviews
 
 class CoursesService:
   def __init__(self):
@@ -12,10 +11,13 @@ class CoursesService:
   
   def get_courses(self) -> List[CourseModel]:
     courses = self.db.query(CourseModel).all()
+    for course in courses:
+      course.reviews
     return courses
 
   def get_course(self, id: int) -> CourseModel:
     course = self.db.query(CourseModel).filter(CourseModel.id == id).first()
+    course.reviews
     return course
   
   def add_course(self, course: CourseSchema) -> CourseModel:
@@ -55,5 +57,39 @@ class CoursesService:
     self.db.commit()
     self.db.refresh(course)
     return course
+  
+  def delete_course(self, id: int) -> bool:
+    course = self.get_course(id)
+    if not course:
+      return False
+    self.db.delete(course)
+    self.db.commit()
+    return True
+
+  def get_reviews_by_course_id(self, course_id: int):
+    course = self.get_course(course_id)
+    if not course:
+      return None
+    return course.reviews
+  
+  def add_review_to_course(self, course_id: int, review: ReviewSchema) -> ReviewModel:
+    course = self.get_course(course_id)
+    if not course:
+      return None
+    dump_review = review.model_dump()
+    dump_review.update({ "course_id": course_id })
+    new_review = ReviewModel(**dump_review)
+    self.db.add(new_review)
+    self.db.commit()
+    self.db.refresh(new_review)
+    return new_review
+  
+  def delete_review(self, course_id, review_id: int) -> bool:
+    review = self.db.query(ReviewModel).filter(ReviewModel.id == review_id, ReviewModel.course_id == course_id).first()
+    if not review:
+      return False
+    self.db.delete(review)
+    self.db.commit()
+    return True
 
 courses_service = CoursesService()

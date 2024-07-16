@@ -1,8 +1,7 @@
 from fastapi import FastAPI, HTTPException
 
-# from models.course import Course, Review
 from config.db import BaseModelDB, engine
-from schemas.course import CourseSchema
+from schemas.course import CourseSchema, ReviewSchema
 from services.course import courses_service
 
 app = FastAPI(
@@ -55,36 +54,36 @@ def update_course(id: str, updated_course: CourseSchema):
     }
   raise HTTPException(status_code=404, detail="Course not found")
 
-# @app.delete('/courses', tags=["courses"])
-# def delete_course(id: str):
-#   if courses_service.delete_course(id):
-#     return {
-#       "success": True
-#     }
-#   raise HTTPException(status_code=404, detail="Course not found")
+@app.delete('/courses', tags=["courses"])
+def delete_course(id: str):
+  if courses_service.delete_course(id):
+    return {
+      "success": True
+    }
+  raise HTTPException(status_code=404, detail="Course not found")
 
-# @app.get('/courses/{course_id}/reviews', tags=["reviews"])
-# def get_reviews_by_course_id(course_id: str):
-#   course_reviews = courses_service.get_reviews_by_course_id(course_id)
-#   if len(course_reviews) > 0:
-#     return {
-#       "reviews": course_reviews
-#     }
-#   raise HTTPException(status_code=404, detail="No reviews found for course " + course_id)
+@app.get('/courses/{course_id}/reviews', tags=["reviews"])
+def get_reviews_by_course_id(course_id: str):
+  course_reviews = courses_service.get_reviews_by_course_id(course_id)
+  if len(course_reviews) > 0:
+    return {
+      "reviews": course_reviews
+    }
+  raise HTTPException(status_code=404, detail="No reviews found for course " + course_id)
 
-# @app.post('/courses/{course_id}/reviews', tags=["reviews"])
-# def create_review(course_id: str, new_review: Review):
-#   course_review = courses_service.create_review(course_id, new_review)
-#   if course_review:
-#     return {
-#       "review": course_review
-#     }
-#   raise HTTPException(status_code=404, detail="Course not found")
+@app.post('/courses/{course_id}/reviews', tags=["reviews"])
+def create_review(course_id: str, new_review: ReviewSchema):
+  course_review = courses_service.add_review_to_course(course_id, new_review)
+  if course_review:
+    return {
+      "review": course_review
+    }
+  raise HTTPException(status_code=404, detail="Course not found")
 
-# @app.delete('/courses/{course_id}/reviews/{review_id}', tags=["reviews"])
-# def delete_review(course_id: str, review_id: str):
-#   if courses_service.delete_review(course_id, review_id):
-#     return {
-#       "success": True
-#     }
-#   raise HTTPException(status_code=404, detail="Course or review not found")
+@app.delete('/courses/{course_id}/reviews/{review_id}', tags=["reviews"])
+def delete_review(course_id: str, review_id: str):
+  if courses_service.delete_review(course_id, review_id):
+    return {
+      "success": True,
+    }
+  raise HTTPException(status_code=404, detail="Course review not found")
